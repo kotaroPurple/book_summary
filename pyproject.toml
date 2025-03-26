@@ -1,0 +1,26 @@
+[project]
+name = "book-summary"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.10.1",
+    "requests>=2.32.3",
+]
+
+[tool.ruff]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    # "UP",  # pyupgrade
+    "ARG001", # unused arguments in functions
+    "PL", # pylint
+]
+
+line-length = 100
+indent-width = 4
