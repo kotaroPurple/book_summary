@@ -1,7 +1,49 @@
 
+import re
+import unicodedata
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass
+from xml.etree.ElementTree import Element
 
 import requests
+
+
+@dataclass
+class BookInfo:
+    title: str = ''
+    price: int = -1
+    year: int = -1
+    publisher: str = ''
+    ndc: int = -1
+
+    def is_valid(self) -> bool:
+        return len(self.title) >= 1
+
+
+def _price_string_to_integer(price_str: str) -> int|None:
+    if price_str == '':
+        return None
+    # 全角数字を半角に変換する
+    normalized = unicodedata.normalize('NFKC', price_str)
+    # 数字以外の文字を削除する（コンマや「円」など）
+    digits = re.sub(r'\D', '', normalized)
+    # 整数に変換する
+    if digits:
+        return int(digits)
+    else:
+        return None
+
+
+def _date_string_to_year(date_str: str) -> int|None:
+    # 出版年は先頭4文字（"YYYY"形式）で抽出
+    year_digits = 4
+    year = None
+    if date_str is not None and date_str and len(date_str) >= year_digits:
+        try:
+            year = int(date_str[:year_digits])
+        except ValueError:
+            year = None
+    return year
 
 
 def make_query(
@@ -34,59 +76,93 @@ def fetch_ndl_data(ndl_url: str, query: dict) -> bytes|None:
         return None
 
 
-def parse_contents(contents: bytes) -> None:
+def parse_contents(contents: bytes) -> list[BookInfo]:
     # <item> タグに出版情報がある
     root = ET.fromstring(contents)
     items = root.findall('.//item')
     if not items:
-        return None
+        return []
 
     results = []
     for item in items:
         record = _parse_record(item)
-        results.append(record)
-    print(results)
+        if record.is_valid():
+            results.append(record)
+    return results
 
 
-def _parse_record(item):
-    # 名前空間の定義。実際のレスポンスに合わせて調整してください。
+def _parse_record(item: Element) -> BookInfo:
     ns = {'dc': 'http://purl.org/dc/elements/1.1/'}
 
     # 各要素を抽出
     title_elem = item.find('./dc:title', ns)
     publisher_elem = item.find('./dc:publisher', ns)
     date_elem = item.find('./dc:date', ns)
-    return (title_elem.text, publisher_elem.text, date_elem.text)
 
-    # # 名前空間の定義。実際のレスポンスに合わせて調整してください。
-    # ns = {'dc': 'http://purl.org/dc/elements/1.1/'}
+    # タイトルがないときは向こうを返す
+    if title_elem is None:
+        return BookInfo()
 
-    # # 各要素を抽出
-    # title_elem = item.find('./dc:title', ns)
-    # publisher_elem = item.find('./dc:publisher', ns)
-    # date_elem = item.find('./dc:date', ns)
-    # subject_elem = item.find('./dc:subject', ns)  # 分類・主題情報
+    # 出版社
+    publisher = ''
+    if publisher_elem is not None:
+        publisher = publisher_elem.text
 
-    # title = title_elem.text if title_elem is not None else "タイトル不明"
-    # publisher = publisher_elem.text if publisher_elem is not None else "不明"
+    # 年数を取得
+    if date_elem is None:
+        year = None
+    else:
+        year = _date_string_to_year(str(date_elem.text))
 
-    # # 出版年は先頭4文字（"YYYY"形式）で抽出
-    # year = None
-    # if date_elem is not None and date_elem.text and len(date_elem.text) >= 4:
-    #     try:
-    #         year = int(date_elem.text[:4])
-    #     except ValueError:
-    #         year = None
+    if year is None:
+        year = -1
 
-    # # 分類情報については、今回はdc:subjectの内容をそのまま利用（複数ある場合は必要に応じて条件分岐してください）
-    # classification = subject_elem.text if subject_elem is not None else "その他"
+    # 値段を取得
+    price = None
+    for child in item:
+        if 'price' in child.tag:
+            price_str = child.text
+            if price_str is None:
+                continue
+            value = _price_string_to_integer(price_str)
+            if isinstance(value, int):
+                price = value
+                break
 
-    # return (publisher, classification, year, title)
+    if price is None:
+        price = -1
+
+    # output
+    result = BookInfo(title=str(title_elem.text), price=price, publisher=str(publisher), year=year)
+    return result
+
+
+def modify_book_info(
+        book_list: list[BookInfo], ndc: int|None = None, publisher: str|None = None,
+        year: int|None = None) -> list[BookInfo]:
+    # update ndc
+    if ndc is not None:
+        for book_info in book_list:
+            book_info.ndc = ndc
+
+    # update publisher
+    if publisher is not None:
+        for book_info in book_list:
+            book_info.publisher = publisher
+
+    # update year
+    if year is not None:
+        for book_info in book_list:
+            book_info.year = year
+
+    return book_list
 
 
 if __name__ == '__main__':
     NDL_URL = 'https://iss.ndl.go.jp/api/opensearch'
-    query = make_query(publisher='培風館', year_from=2023, year_until=2023)
+    query = make_query(publisher='培風館', year_from=1986, year_until=1986, n_records=500, ndc=41)
     content = fetch_ndl_data(NDL_URL, query)
     if content is not None:
-        parse_contents(content)
+        book_list = parse_contents(content)
+        book_list = modify_book_info(book_list, ndc=41, publisher='hoge', year=None)
+        print(book_list)
