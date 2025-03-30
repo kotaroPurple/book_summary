@@ -23,8 +23,18 @@
             "program": "data_merge.py",
             "console": "integratedTerminal",
             "args": [
-                "./data/00",
-                "./data/merged_info.parquet"
+                "./data/01",
+                "./data/merged_info_01.parquet"
+            ]
+        },
+        {
+            "name": "View",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "data_view.py",
+            "console": "integratedTerminal",
+            "args": [
+                "./data/merged_info_01.parquet"
             ]
         }
     ]

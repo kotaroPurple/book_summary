@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 
 from core.data_keeper import read_book_info
+from core.util import ColumnName
 
 
 def main() -> None:
@@ -22,6 +23,10 @@ def main() -> None:
     for p_file in p_dir.iterdir():
         sub_df = read_book_info(str(p_file))
         if sub_df.empty is False:
+            # 重複を消す
+            sub_df = sub_df.drop_duplicates(
+                subset=[ColumnName.title, ColumnName.year, ColumnName.publisher])
+            # 統合
             if merged_df is not None:
                 merged_df = pd.concat((merged_df, sub_df), ignore_index=True)
             else:

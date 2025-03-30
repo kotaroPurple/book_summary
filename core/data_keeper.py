@@ -1,5 +1,5 @@
 
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 
 import pandas as pd
 
@@ -67,8 +67,3 @@ def read_book_info(filepath: str) -> pd.DataFrame:
 
     # output
     return df.filter(items=correct_columns)
-
-
-if __name__ == '__main__':
-    # main()
-    pass

@@ -1,6 +1,7 @@
 
 from dataclasses import dataclass
 
+
 # column
 @dataclass(frozen=True)
 class ColumnName:
@@ -68,4 +69,4 @@ NDC_LIST = [
 ]
 
 # 調べる年代
-TARGET_YEARS = list(range(1975, 2025))
+TARGET_YEARS = list(range(1950, 2025))
