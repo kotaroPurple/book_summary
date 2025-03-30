@@ -12,8 +12,19 @@
             "console": "integratedTerminal",
             "args": [
                 "--extract",
-                "--datapath",
-                "./data/book_info.csv"
+                "--dataheader",
+                "./data/book_info"
+            ]
+        },
+        {
+            "name": "Merge",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "data_merge.py",
+            "console": "integratedTerminal",
+            "args": [
+                "./data/00",
+                "./data/merged_info.parquet"
             ]
         }
     ]
