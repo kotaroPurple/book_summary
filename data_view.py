@@ -1,11 +1,18 @@
 
 import argparse
-from pathlib import Path
 
-import pandas as pd
 import plotly.express as px
 
 from core.data_keeper import read_book_info
+
+
+def _ndc_to_string(ndc: int) -> str:
+    if ndc == 4:  # NOQA
+        return '理学'
+    elif ndc == 5:  # NOQA
+        return '工学'
+    else:
+        return 'None'
 
 
 def main() -> None:
@@ -15,25 +22,36 @@ def main() -> None:
     args = parser.parse_args()
 
     load_df = read_book_info(args.datapath)
-    df = load_df.drop(columns=['title', 'ndc', 'price'])
+    df = load_df.drop(columns=['title'])
+    df['genre'] = df['ndc'].apply(_ndc_to_string)
 
+    #
     # 出版社 (publisher) と出版年 (year) ごとに件数をカウント
-    result = df.groupby(['publisher', 'year']).size().reset_index(name='publication_count')
-
-    # Plotly Express で出版社ごとの時系列推移をプロット
-    # fig = px.line(
-    #     result,
-    #     x='year',
-    #     y='publication_count',
-    #     color='publisher',
-    #     markers=True,
-    #     title='出版社別の出版件数の時系列推移',
-    #     labels={'year': '出版年', 'publication_count': '出版件数', 'publisher': '出版社'}
-    # )
+    #
+    publisher_df = df.groupby(['publisher', 'year']).size().reset_index(name='publication_count')
 
     fig = px.bar(
-        result, x='year', y='publication_count',
+        publisher_df, x='year', y='publication_count',
         color='publisher', barmode='stack')
+
+    fig.show()
+
+    #
+    # 理学 (ndc=4), 工学 (ndc=5) の出版数
+    #
+    ndc_df = df.groupby(['genre', 'year']).size().reset_index(name='publication_count')
+
+    fig = px.bar(
+        ndc_df, x='year', y='publication_count',
+        color='genre', barmode='stack')
+
+    fig.show()
+
+    #
+    # 年ごとの価格を表示
+    #
+    median_price = df.groupby('year')['price'].median().reset_index()
+    fig = px.line(median_price, x='year', y='price', markers=True)
 
     fig.show()
 
